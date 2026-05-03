@@ -24,20 +24,25 @@ logger = logging.getLogger(__name__)
 def fetch_market_data():
     logger.info("Iniciando coleta de dados financeiros...")
     
-    # Pegando Dólar e Euro (AwesomeAPI) e BTC (CoinGecko)
-    url_cambio = "https://economia.awesomeapi.com.br/last/USD-BRL,EUR-BRL"
+    # URLs
+    url_cambio = "https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL"
     url_crypto = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=brl"
     
     try:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        # Requests
+        # Request Câmbio
         res_cambio = requests.get(url_cambio, timeout=20).json()
+        # Ajuste aqui: a API pode retornar com ou sem hífen
+        usd_data = res_cambio.get("USDBRL") or res_cambio.get("USD-BRL")
+        eur_data = res_cambio.get("EURBRL") or res_cambio.get("EUR-BRL")
+        
+        # Request Crypto
         res_crypto = requests.get(url_crypto, timeout=20).json()
         
         results = [
-            {"timestamp": timestamp, "asset": "Dólar", "price": float(res_cambio["USDBRL"]["bid"])},
-            {"timestamp": timestamp, "asset": "Euro", "price": float(res_cambio["EURBRL"]["bid"])},
+            {"timestamp": timestamp, "asset": "Dólar", "price": float(usd_data["bid"])},
+            {"timestamp": timestamp, "asset": "Euro", "price": float(eur_data["bid"])},
             {"timestamp": timestamp, "asset": "Bitcoin", "price": float(res_crypto["bitcoin"]["brl"])},
             {"timestamp": timestamp, "asset": "Ethereum", "price": float(res_crypto["ethereum"]["brl"])}
         ]
@@ -48,6 +53,8 @@ def fetch_market_data():
         return results
     except Exception as e:
         logger.error(f"Falha na coleta: {e}")
+        # Log detalhado para debug se falhar de novo
+        if 'res_cambio' in locals(): logger.error(f"Payload recebido: {res_cambio}")
         return []
 
 def save_csv(records):

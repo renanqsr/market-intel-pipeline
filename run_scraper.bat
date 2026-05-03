@@ -1,15 +1,10 @@
 @echo off
-:: ─────────────────────────────────────────────────────────────
-:: ML Price Tracker - Executar scraper e commitar no GitHub
-:: ─────────────────────────────────────────────────────────────
 
-:: ✏️ EDITE AQUI o caminho da sua pasta do projeto
-set REPO_DIR=C:\Users\wesle\Documents\GitHub\ML-price-tracker
 
-:: ✏️ EDITE AQUI o caminho do seu Python (rode "where python" no terminal pra descobrir)
+set REPO_DIR=C:\Users\wesle\Documents\GitHub\market-intel-pipeline
+
+
 set PYTHON=python
-
-:: ─────────────────────────────────────────────────────────────
 cd /d "%REPO_DIR%"
 
 echo [%date% %time%] Iniciando scraper...
