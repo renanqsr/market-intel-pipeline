@@ -1,75 +1,94 @@
-# 🕷️ ML Price Tracker
+# 📊 Market Intel Pipeline
 
-Rastreador automático de preços do Mercado Livre com histórico em CSV e monitoramento de erros via GitHub Actions.
+[![Market Data Monitor](https://github.com/renanqsr/market-intel-pipeline/actions/workflows/scraper.yml/badge.svg)](https://github.com/renanqsr/market-intel-pipeline/actions/workflows/scraper.yml)
 
-## 📁 Estrutura
+Automated **ETL (Extract, Transform, Load)** system for monitoring financial assets (Forex and Crypto). The project uses Python for data collection and processing, with fully serverless orchestration via **GitHub Actions**.
 
-```
+---
+
+## 🚀 Problem vs Solution
+
+Financial data analysis often depends on manual exports or paid tools.  
+This project solves that by creating a **free, automated historical dataset**.
+
+The system runs daily, fetches fresh data, processes it, and stores it — building a consistent historical dataset with **zero manual intervention** and no infrastructure costs (**Git-as-a-Database approach**).
+
+---
+
+## 📁 Project Structure
+
+```text
 .
-├── scraper.py               # Script principal
-├── requirements.txt         # Dependências Python
+├── scraper.py             # Main data collection script (Python)
+├── requirements.txt       # Project dependencies
 ├── data/
-│   └── prices.csv           # Histórico de preços (gerado automaticamente)
+│   └── market_trends.csv  # Historical dataset (auto-generated)
 ├── logs/
-│   └── scraper.log          # Logs de execução (gerado automaticamente)
+│   └── monitor.log        # Execution logs (auto-generated)
 └── .github/
     └── workflows/
-        └── scraper.yml      # Pipeline CI/CD (roda todo dia ao meio-dia UTC)
+        └── scraper.yml    # CI/CD pipeline (Cron Job: 09:00 BRT)
 ```
 
-## 🚀 Como usar
+---
 
-### 1. Clone e configure o repositório
+## 🛠️ Tech Stack
 
-```bash
-git clone https://github.com/SEU_USUARIO/SEU_REPO.git
-cd SEU_REPO
-```
+- **Language:** Python 3.12
+- **Libraries:**
+  - `requests`: API consumption
+  - `csv`: Data persistence (standard library)
+  - `logging`: Monitoring and debugging (standard library)
+  - `beautifulsoup4` & `lxml`: Web scraping capabilities (pre-configured)
+- **Orchestration:** GitHub Actions (Automated Workflow)
+- **Architecture:** Event-driven Automation / ETL Pipeline
 
-### 2. Configure as variáveis no GitHub
+---
 
-Vá em **Settings → Variables → Actions** e adicione:
+## ⚙️ How the Pipeline Works
 
-| Variável       | Descrição                          | Exemplo       |
-|----------------|------------------------------------|---------------|
-| `SEARCH_QUERY` | Produto a buscar no ML             | `iphone 15`   |
-| `MAX_RESULTS`  | Quantos produtos registrar por dia | `10`          |
+1.  **Trigger:** GitHub Actions runs the workflow daily via Cron Job at `12:00 UTC` (`09:00 BRT`).
+2.  **Extraction:** Fetches real-time data from:
+    - **AwesomeAPI:** USD/BRL and EUR/BRL exchange rates.
+    - **CoinGecko:** Bitcoin and Ethereum prices in BRL.
+3.  **Transformation:**
+    - Validates raw data.
+    - Converts values to float.
+    - Adds timestamps.
+4.  **Load:** Automatically commits updated data to `data/market_trends.csv`.
 
-### 3. Ative o workflow
+---
 
-- Vá em **Actions** no seu repositório
-- Clique em **ML Price Scraper**
-- Clique em **Run workflow** para testar manualmente
+## 💻 Run Locally
 
-A partir daí ele roda automaticamente todo dia ao meio-dia (UTC) — equivalente a 9h no horário de Brasília.
+To run the project on your machine, follow these steps:
 
-## 💻 Rodar localmente
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/renanqsr/market-intel-pipeline.git
+    cd market-intel-pipeline
+    ```
 
-```bash
-pip install -r requirements.txt
+2.  **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-# Opcional: defina variáveis de ambiente
-export SEARCH_QUERY="iphone 15"
-export MAX_RESULTS=10
+3.  **Run the pipeline:**
+    ```bash
+    python scraper.py
+    ```
 
-python scraper.py
-```
+---
 
-## 📊 Formato do CSV
+## 🔍 Monitoring & Logs
 
-```
-timestamp,product,price,currency,url
-2024-01-15 12:00:00,iPhone 15 128GB,4599.99,R$,https://...
-```
+- **Local Logs:** Stored in `logs/monitor.log` for request debugging.
+- **GitHub Artifacts:** Each Actions run generates downloadable execution logs.
+- **Transparency:** The badge at the top of this README shows real-time pipeline status.
 
-## 🔍 Monitoramento de erros
+---
 
-- **Logs locais**: `logs/scraper.log`
-- **Artefatos no GitHub**: cada execução do Actions salva o log por 7 dias
-- **Job com falha**: se o scraper lançar exceção, o Actions marca o job como ❌ e você recebe email de notificação
+## 👨‍💻 Author
 
-## ⚠️ Observações
-
-- O seletor CSS do ML pode mudar com o tempo. Se parar de coletar dados, verifique os seletores em `scraper.py`.
-- Use com moderação para não sobrecarregar os servidores do ML.
-
+Developed by **Renan Queiroz**.

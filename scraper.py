@@ -11,8 +11,8 @@ LOG_DIR  = os.path.join(BASE_DIR, "logs")
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(LOG_DIR, exist_ok=True)
 
-CSV_FILE = os.path.join(DATA_DIR, "prices.csv")
-LOG_FILE = os.path.join(LOG_DIR, "scraper.log")
+CSV_FILE = os.path.join(DATA_DIR, "market_trends.csv")
+LOG_FILE = os.path.join(LOG_DIR, "monitor.log")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -21,57 +21,47 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# CONFIGURAÇÕES
-SEARCH_QUERY = "iphone 15 128gb"
-MAX_RESULTS  = 5
-
-def fetch_prices_api():
-    logger.info(f"Buscando via API Pública: {SEARCH_QUERY}")
-    # Endpoint oficial de busca (não precisa de Token para buscas públicas)
-    url = f"https://api.mercadolibre.com/sites/MLB/search?q={SEARCH_QUERY.replace(' ', '%20')}&limit={MAX_RESULTS}"
+def fetch_market_data():
+    logger.info("Iniciando coleta de dados financeiros...")
+    
+    # Pegando Dólar e Euro (AwesomeAPI) e BTC (CoinGecko)
+    url_cambio = "https://economia.awesomeapi.com.br/last/USD-BRL,EUR-BRL"
+    url_crypto = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=brl"
     
     try:
-        resp = requests.get(url, timeout=20)
-        resp.raise_for_status()
-        data = resp.json()
-        
-        results = []
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        # A API retorna os produtos dentro da chave 'results'
-        items = data.get("results", [])
         
-        for item in items:
-            results.append({
-                "timestamp": timestamp,
-                "product_id": item.get("id"),
-                "product": item.get("title"),
-                "price": float(item.get("price", 0)),
-                "currency": item.get("currency_id"),
-                "url": item.get("permalink")
-            })
-            logger.info(f" ✓ {item.get('title')[:30]}... R$ {item.get('price')}")
+        # Requests
+        res_cambio = requests.get(url_cambio, timeout=20).json()
+        res_crypto = requests.get(url_crypto, timeout=20).json()
+        
+        results = [
+            {"timestamp": timestamp, "asset": "Dólar", "price": float(res_cambio["USDBRL"]["bid"])},
+            {"timestamp": timestamp, "asset": "Euro", "price": float(res_cambio["EURBRL"]["bid"])},
+            {"timestamp": timestamp, "asset": "Bitcoin", "price": float(res_crypto["bitcoin"]["brl"])},
+            {"timestamp": timestamp, "asset": "Ethereum", "price": float(res_crypto["ethereum"]["brl"])}
+        ]
+        
+        for r in results:
+            logger.info(f" ✓ {r['asset']}: R$ {r['price']:.2f}")
             
         return results
     except Exception as e:
-        logger.error(f"Erro na API do Mercado Livre: {e}")
+        logger.error(f"Falha na coleta: {e}")
         return []
 
 def save_csv(records):
-    headers = ["timestamp", "product_id", "product", "price", "currency", "url"]
+    if not records: return
+    headers = ["timestamp", "asset", "price"]
     file_exists = os.path.isfile(CSV_FILE)
 
     with open(CSV_FILE, "a", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=headers)
         if not file_exists:
             writer.writeheader()
-        
-        if records:
-            writer.writerows(records)
-            logger.info(f"CSV atualizado com {len(records)} itens.")
-        else:
-            logger.warning("Nenhum item encontrado pela API.")
+        writer.writerows(records)
+        logger.info(f"Dados persistidos em CSV com sucesso.")
 
 if __name__ == "__main__":
-    data = fetch_prices_api()
+    data = fetch_market_data()
     save_csv(data)

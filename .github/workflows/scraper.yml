@@ -1,4 +1,4 @@
-name: ML Price Scraper
+name: Market Data Monitor
 
 on:
   schedule:
@@ -41,14 +41,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Adiciona o CSV se ele existir
-          if [ -f data/prices.csv ]; then
-            git add data/prices.csv
-            # O '|| exit 0' evita que o erro pare o processo se não houver mudança nos preços
-            git commit -m "chore(data): preços atualizados $(date +'%Y-%m-%d %H:%M')" || echo "Sem mudanças"
+          if [ -f data/market_trends.csv ]; then
+            git add data/market_trends.csv
+            # Esta linha abaixo é a que mudou:
+            git commit -m "chore(data): market trends updated $(date +'%Y-%m-%d %H:%M')" || echo "Sem mudanças"
             git push origin main
           else
-            echo "Erro: prices.csv não foi gerado pelo Python."
+            echo "Erro: market_trends.csv não foi gerado."
             exit 1
           fi
 
