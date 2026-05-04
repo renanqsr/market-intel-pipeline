@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 def fetch_market_data():
     logger.info("Iniciando coleta de dados financeiros...")
     
-    url_cambio = "https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL"
+    url_cambio = "https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoMoedaDia(moeda=@moeda,dataCotacao=@dataCotacao)?@moeda='USD'&@dataCotacao='05-04-2026'&$format=json"
     url_crypto = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=brl"
     
     headers = {
