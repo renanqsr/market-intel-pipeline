@@ -27,37 +27,42 @@ logger = logging.getLogger(__name__)
 def fetch_market_data():
     logger.info("Iniciando coleta de dados financeiros...")
     
-    data_cotacao = (datetime.now() - timedelta(days=1)).strftime('%m-%d-%Y')
-    
-    # URLs
-    url_usd = f"https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoMoedaDia(moeda=@moeda,dataCotacao=@dataCotacao)?@moeda='USD'&@dataCotacao='{data_cotacao}'&$format=json"
-    url_eur = f"https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoMoedaDia(moeda=@moeda,dataCotacao=@dataCotacao)?@moeda='EUR'&@dataCotacao='{data_cotacao}'&$format=json"
-    url_crypto = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=brl"
-    
+    timestamp_agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     results = []
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # 1. Coletar USD e EUR do Banco Central
-    for moeda, url in [("Dólar", url_usd), ("Euro", url_eur)]:
-        try:
-            res = requests.get(url, timeout=15)
-            dados = res.json()
-            if dados.get('value'):
-                preco = dados['value'][0]['cotacaoVenda']
-                results.append({"timestamp": timestamp, "asset": moeda, "price": round(float(preco), 2)})
-                logger.info(f" ✓ {moeda} coletado via BC.")
-            else:
-                logger.warning(f"⚠️ Sem cotação de {moeda} para a data {data_cotacao} (Fim de semana/Feriado?)")
-        except Exception as e:
-            logger.error(f"Erro no câmbio BC ({moeda}): {e}")
+    for moeda in ["USD", "EUR"]:
+        nome_exibicao = "Dólar" if moeda == "USD" else "Euro"
+        encontrou = False
+        tentativas = 0
+        
+        # Tenta buscar a cotação de até 5 dias atrás
+        while not encontrou and tentativas < 5:
+            data_teste = (datetime.now() - timedelta(days=tentativas)).strftime('%m-%d-%Y')
+            url = f"https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoMoedaDia(moeda=@moeda,dataCotacao=@dataCotacao)?@moeda='{moeda}'&@dataCotacao='{data_teste}'&$format=json"
+            
+            try:
+                res = requests.get(url, timeout=10)
+                dados = res.json()
+                if dados.get('value'):
+                    preco = dados['value'][0]['cotacaoVenda']
+                    results.append({"timestamp": timestamp_agora, "asset": nome_exibicao, "price": round(float(preco), 2)})
+                    logger.info(f" ✓ {nome_exibicao} coletado (Data ref: {data_teste}).")
+                    encontrou = True
+                else:
+                    tentativas += 1
+            except Exception as e:
+                logger.error(f"Erro ao acessar BC para {moeda}: {e}")
+                break
 
     # 2. Coletar Cripto (CoinGecko)
     try:
-        res_crypto = requests.get(url_crypto, timeout=15)
-        dados_c = res_crypto.json()
-        results.append({"timestamp": timestamp, "asset": "Bitcoin", "price": float(dados_c['bitcoin']['brl'])})
-        results.append({"timestamp": timestamp, "asset": "Ethereum", "price": float(dados_c['ethereum']['brl'])})
-        logger.info(" ✓ Criptos coletadas.")
+        url_crypto = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=brl"
+        res_c = requests.get(url_crypto, timeout=10)
+        dados_c = res_c.json()
+        results.append({"timestamp": timestamp_agora, "asset": "Bitcoin", "price": float(dados_c['bitcoin']['brl'])})
+        results.append({"timestamp": timestamp_agora, "asset": "Ethereum", "price": float(dados_c['ethereum']['brl'])})
+        logger.info(" ✓ Criptos coletadas com sucesso.")
     except Exception as e:
         logger.error(f"Erro Cripto: {e}")
 
