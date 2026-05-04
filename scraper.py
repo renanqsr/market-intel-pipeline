@@ -25,65 +25,41 @@ logger = logging.getLogger(__name__)
 def fetch_market_data():
     logger.info("Iniciando coleta de dados financeiros...")
     
-    # URLs - Usando o endpoint /all que costuma ser mais resiliente
-    url_cambio = "https://economia.awesomeapi.com.br/all/USD-BRL,EUR-BRL"
+    url_cambio = "https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL"
     url_crypto = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=brl"
     
-    # Headers para simular um navegador real e evitar bloqueios (429)
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
     
-    max_tentativas = 3
-    espera_segundos = 30 
-    
-    for tentativa in range(1, max_tentativas + 1):
-        try:
-            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
-            # 1. Coleta de Câmbio
-            res_cambio_obj = requests.get(url_cambio, headers=headers, timeout=20)
-            
-            if res_cambio_obj.status_code == 429:
-                logger.warning(f"⚠️ Limite atingido (429). Tentativa {tentativa}/{max_tentativas}. Aguardando {espera_segundos}s...")
-                time.sleep(espera_segundos)
-                continue
-            
-            res_cambio = res_cambio_obj.json()
-            
-            # 2. Coleta de Crypto
-            res_crypto = requests.get(url_crypto, headers=headers, timeout=20).json()
-            
-            # Extração dos dados (Tratando possíveis variações de nomes na API de câmbio)
-            usd = res_cambio.get("USD", {}).get("bid")
-            eur = res_cambio.get("EUR", {}).get("bid")
-            btc = res_crypto.get("bitcoin", {}).get("brl")
-            eth = res_crypto.get("ethereum", {}).get("brl")
+    results = []
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            # Validação básica: se algum dado essencial falhou, força o erro para tentar de novo
-            if not all([usd, eur, btc, eth]):
-                raise ValueError("Dados incompletos recebidos das APIs")
+    # 1. Tentar Câmbio (AwesomeAPI)
+    try:
+        res = requests.get(url_cambio, headers=headers, timeout=15)
+        if res.status_code == 200:
+            dados = res.json()
+            results.append({"timestamp": timestamp, "asset": "Dólar", "price": float(dados['USDBRL']['bid'])})
+            results.append({"timestamp": timestamp, "asset": "Euro", "price": float(dados['EURBRL']['bid'])})
+            logger.info(" ✓ Câmbio coletado com sucesso.")
+        else:
+            logger.warning(f"⚠️ Falha no câmbio (Status {res.status_code}). Pulando...")
+    except Exception as e:
+        logger.error(f"Erro ao acessar AwesomeAPI: {e}")
 
-            results = [
-                {"timestamp": timestamp, "asset": "Dólar", "price": float(usd)},
-                {"timestamp": timestamp, "asset": "Euro", "price": float(eur)},
-                {"timestamp": timestamp, "asset": "Bitcoin", "price": float(btc)},
-                {"timestamp": timestamp, "asset": "Ethereum", "price": float(eth)}
-            ]
-            
-            for r in results:
-                logger.info(f" ✓ {r['asset']}: R$ {r['price']:.2f}")
-                
-            return results
-            
-        except Exception as e:
-            logger.error(f"Erro na tentativa {tentativa}: {e}")
-            if tentativa < max_tentativas:
-                time.sleep(espera_segundos)
-            else:
-                logger.critical("❌ Todas as tentativas falharam. API pode estar fora do ar ou bloqueio persistente.")
-    
-    return []
+    # 2. Tentar Cripto (CoinGecko)
+    try:
+        res_crypto = requests.get(url_crypto, headers=headers, timeout=15)
+        if res_crypto.status_code == 200:
+            dados_c = res_crypto.json()
+            results.append({"timestamp": timestamp, "asset": "Bitcoin", "price": float(dados_c['bitcoin']['brl'])})
+            results.append({"timestamp": timestamp, "asset": "Ethereum", "price": float(dados_c['ethereum']['brl'])})
+            logger.info(" ✓ Cripto coletada com sucesso.")
+    except Exception as e:
+        logger.error(f"Erro ao acessar CoinGecko: {e}")
+
+    return results
 
 def save_csv(records):
     if not records: return
