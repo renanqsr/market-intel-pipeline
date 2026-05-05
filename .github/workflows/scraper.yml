@@ -38,14 +38,19 @@ jobs:
 
       - name: 🚀 Commit e Push
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "renanqsr"
+          git config --global user.email "renan.queiroz08sr@gmail.com"
           
           if [ -f data/market_trends.csv ]; then
             git add data/market_trends.csv
-            # Esta linha abaixo é a que mudou:
-            git commit -m "chore(data): market trends updated $(date +'%Y-%m-%d %H:%M')" || echo "Sem mudanças"
-            git push origin main
+            
+            if git diff --staged --quiet; then
+              echo "Nenhuma alteração detectada no CSV."
+            else
+              git commit -m "chore(data): market trends updated $(date +'%Y-%m-%d %H:%M')"
+              git pull --rebase origin main
+              git push origin main
+            fi
           else
             echo "Erro: market_trends.csv não foi gerado."
             exit 1
